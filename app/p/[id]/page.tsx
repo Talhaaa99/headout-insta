@@ -2,11 +2,16 @@ import Image from "next/image";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { notFound } from "next/navigation";
 
-export default async function PostPage({ params }: { params: { id: string } }) {
+export default async function PostPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
   const { data: post } = await supabaseAdmin
     .from("posts_with_counts")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
     .maybeSingle();
 
   if (!post) notFound();
