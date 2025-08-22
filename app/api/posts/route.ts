@@ -1,7 +1,6 @@
 // app/api/posts/route.ts
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { ratelimit } from "../_lib/rate-limit";
 
 export async function GET(req: NextRequest) {
@@ -19,7 +18,7 @@ export async function GET(req: NextRequest) {
       { count: "exact", head: false }
     )
     .order("created_at", { ascending: false })
-    .limit(limit + 1) as any; // Supabase TS typing workaround
+    .limit(limit + 1);
 
   if (cursor) query = query.lt("created_at", cursor);
 

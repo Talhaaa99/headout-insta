@@ -8,11 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+interface FormValues {
+  file?: FileList;
+  caption?: string;
+}
+
 export default function PostComposer() {
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset } = useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
 
-  const onSubmit = async (values: any) => {
+  const onSubmit = async (values: FormValues) => {
     const file = values.file?.[0];
     if (!file) return toast("Choose a photo");
 
