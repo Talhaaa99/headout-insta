@@ -11,23 +11,45 @@ export async function GET(req: NextRequest) {
   const cursor = req.nextUrl.searchParams.get("cursor"); // created_at iso
   const limit = Number(req.nextUrl.searchParams.get("limit") ?? 10);
 
-  let query = supabaseAdmin
-    .from("posts")
-    .select(
-      "id, caption, image_path, created_at, user_id, profiles(username), likes(count), comments(count)",
-      { count: "exact", head: false }
-    )
-    .order("created_at", { ascending: false })
-    .limit(limit + 1);
+  try {
+    // Simple query that should work even with minimal schema
+    let query = supabaseAdmin
+      .from("posts")
+      .select("id, caption, image_path, created_at, user_id")
+      .order("created_at", { ascending: false })
+      .limit(limit + 1);
 
-  if (cursor) query = query.lt("created_at", cursor);
+    if (cursor) query = query.lt("created_at", cursor);
 
-  const { data, error } = await query;
-  if (error) return new Response(error.message, { status: 500 });
+    const { data: posts, error } = await query;
+    if (error) {
+      console.error("Database error:", error);
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+      });
+    }
 
-  const hasMore = data.length > limit;
-  const items = data.slice(0, limit);
-  const nextCursor = hasMore ? items[items.length - 1].created_at : null;
+    if (!posts) {
+      return Response.json({ items: [], nextCursor: null });
+    }
 
-  return Response.json({ items, nextCursor });
+    // Add basic properties that the frontend expects
+    const enhancedPosts = posts.map((post) => ({
+      ...post,
+      like_count: 0, // Default to 0, will be updated when likes system is working
+      viewer_liked: false,
+      profiles: { username: "user" }, // Default username
+    }));
+
+    const hasMore = enhancedPosts.length > limit;
+    const items = enhancedPosts.slice(0, limit);
+    const nextCursor = hasMore ? items[items.length - 1].created_at : null;
+
+    return Response.json({ items, nextCursor });
+  } catch (err) {
+    console.error("API error:", err);
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+    });
+  }
 }

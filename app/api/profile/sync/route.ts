@@ -3,8 +3,6 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { auth } from "@clerk/nextjs/server";
 
 export async function POST() {
-  new Response("Too Many Requests", { status: 429 });
-
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
 

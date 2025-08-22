@@ -11,12 +11,27 @@ export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
   const { postId } = await req.json();
-  const { data: profile } = await supabaseAdmin
+
+  let { data: profile } = await supabaseAdmin
     .from("profiles")
     .select("id")
     .eq("clerk_user_id", userId)
     .maybeSingle();
-  if (!profile) return new Response("Profile?", { status: 404 });
+
+  if (!profile) {
+    // Create profile if it doesn't exist
+    const { data: newProfile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .insert({ clerk_user_id: userId })
+      .select("id")
+      .single();
+
+    if (profileError) {
+      console.error("Profile creation error:", profileError);
+      return new Response("Failed to create profile", { status: 500 });
+    }
+    profile = newProfile;
+  }
 
   const { error } = await supabaseAdmin
     .from("likes")
@@ -30,12 +45,27 @@ export async function DELETE(req: Request) {
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
   const { postId } = await req.json();
-  const { data: profile } = await supabaseAdmin
+
+  let { data: profile } = await supabaseAdmin
     .from("profiles")
     .select("id")
     .eq("clerk_user_id", userId)
     .maybeSingle();
-  if (!profile) return new Response("Profile?", { status: 404 });
+
+  if (!profile) {
+    // Create profile if it doesn't exist
+    const { data: newProfile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .insert({ clerk_user_id: userId })
+      .select("id")
+      .single();
+
+    if (profileError) {
+      console.error("Profile creation error:", profileError);
+      return new Response("Failed to create profile", { status: 500 });
+    }
+    profile = newProfile;
+  }
 
   const { error } = await supabaseAdmin
     .from("likes")

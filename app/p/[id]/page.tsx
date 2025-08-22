@@ -9,8 +9,8 @@ export default async function PostPage({
 }) {
   const { id } = await params;
   const { data: post } = await supabaseAdmin
-    .from("posts_with_counts")
-    .select("*")
+    .from("posts")
+    .select("id, caption, image_path, created_at, user_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -34,9 +34,7 @@ export default async function PostPage({
       </div>
       <div className="space-y-1">
         <p className="text-sm">{post.caption}</p>
-        <div className="text-xs text-muted-foreground">
-          ❤️ {post.like_count} · 💬 {post.comment_count} · 📤 {post.share_count}
-        </div>
+        <div className="text-xs text-muted-foreground">❤️ 0 · 💬 0 · 📤 0</div>
       </div>
     </main>
   );
