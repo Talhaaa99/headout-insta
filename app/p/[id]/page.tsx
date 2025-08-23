@@ -21,20 +21,34 @@ export default async function PostPage({
     .createSignedUrl(post.image_path, 60 * 60);
 
   return (
-    <main className="mx-auto max-w-md p-4 space-y-4">
-      <div className="relative w-full aspect-[4/5] overflow-hidden rounded-lg border">
-        {signed?.signedUrl && (
-          <Image
-            src={signed.signedUrl}
-            alt={post.caption ?? "POI"}
-            fill
-            sizes="100vw"
-          />
-        )}
-      </div>
-      <div className="space-y-1">
-        <p className="text-sm">{post.caption}</p>
-        <div className="text-xs text-muted-foreground">❤️ 0 · 💬 0 · 📤 0</div>
+    <main className="mx-auto max-w-md p-6 space-y-6">
+      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+        <div className="relative w-full aspect-[4/5] overflow-hidden">
+          {signed?.signedUrl && (
+            <Image
+              src={signed.signedUrl}
+              alt={post.caption ?? "Post"}
+              fill
+              sizes="100vw"
+              className="object-cover"
+            />
+          )}
+        </div>
+        <div className="p-4 space-y-3">
+          {post.caption && (
+            <p className="text-foreground font-text text-sm leading-relaxed">
+              {post.caption}
+            </p>
+          )}
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center gap-4">
+              <span>❤️ 0</span>
+              <span>💬 0</span>
+              <span>📤 0</span>
+            </div>
+            <span>{new Date(post.created_at).toLocaleDateString()}</span>
+          </div>
+        </div>
       </div>
     </main>
   );
