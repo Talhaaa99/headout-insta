@@ -8,6 +8,30 @@ import sharp from "sharp";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
+export const revalidate = 0;
+
+export async function GET() {
+  return Response.json({
+    status: "Upload API is working",
+    timestamp: new Date().toISOString(),
+    methods: ["POST"],
+    deployment: "v2.0.1",
+    cache: "busted",
+  });
+}
+
+// Explicitly handle other methods to prevent 405
+export async function PUT() {
+  return new Response("Method not allowed", { status: 405 });
+}
+
+export async function DELETE() {
+  return new Response("Method not allowed", { status: 405 });
+}
+
+export async function PATCH() {
+  return new Response("Method not allowed", { status: 405 });
+}
 
 export async function POST(req: NextRequest) {
   try {
