@@ -1,0 +1,15 @@
+{
+  "functions": {
+    "app/api/upload/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/posts/route.ts": {
+      "maxDuration": 10
+    },
+    "app/api/likes/route.ts": {
+      "maxDuration": 10
+    }
+  },
+  "regions": ["iad1"],
+  "crons": []
+}
