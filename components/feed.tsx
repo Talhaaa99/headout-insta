@@ -48,8 +48,12 @@ export default function Feed() {
       {items.length === 0 && !isValidating ? (
         <div className="text-center py-12">
           <div className="glass-effect rounded-2xl p-8">
-            <h3 className="text-xl font-title text-foreground mb-2">No posts yet</h3>
-            <p className="text-muted-foreground">Be the first to share a photo!</p>
+            <h3 className="text-xl font-title text-foreground mb-2">
+              No posts yet
+            </h3>
+            <p className="text-muted-foreground">
+              Be the first to share a photo!
+            </p>
           </div>
         </div>
       ) : (
@@ -64,7 +68,7 @@ export default function Feed() {
               <FeedCard post={p} />
             </motion.div>
           ))}
-          
+
           {isValidating && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -73,11 +77,13 @@ export default function Feed() {
             >
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <span className="text-muted-foreground font-medium">Loading posts...</span>
+                <span className="text-muted-foreground font-medium">
+                  Loading posts...
+                </span>
               </div>
             </motion.div>
           )}
-          
+
           {hasMore && !isValidating && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -92,14 +98,16 @@ export default function Feed() {
               </button>
             </motion.div>
           )}
-          
+
           {!hasMore && items.length > 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-center py-8"
             >
-              <p className="text-muted-foreground font-text">You&apos;ve reached the end! 🎉</p>
+              <p className="text-muted-foreground font-text">
+                You&apos;ve reached the end! 🎉
+              </p>
             </motion.div>
           )}
         </>
