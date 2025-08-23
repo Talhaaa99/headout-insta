@@ -3,7 +3,17 @@ import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { ratelimit } from "../_lib/rate-limit";
-import sharp from "sharp";
+
+// Dynamic import for Sharp to handle production issues
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let sharp: any;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  sharp = require("sharp");
+} catch (error) {
+  console.error("Sharp import failed:", error);
+  sharp = null;
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,13 +21,34 @@ export const maxDuration = 30;
 export const revalidate = 0;
 
 export async function GET() {
-  return Response.json({
-    status: "Upload API is working",
-    timestamp: new Date().toISOString(),
-    methods: ["POST"],
-    deployment: "v2.0.1",
-    cache: "busted",
-  });
+  try {
+    // Test if environment variables are available
+    const hasSupabaseUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const hasSupabaseKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const hasClerkKey = !!process.env.CLERK_SECRET_KEY;
+
+    return Response.json({
+      status: "Upload API is working",
+      timestamp: new Date().toISOString(),
+      methods: ["POST"],
+      deployment: "v2.0.1",
+      cache: "busted",
+      env: {
+        hasSupabaseUrl,
+        hasSupabaseKey,
+        hasClerkKey,
+        nodeEnv: process.env.NODE_ENV,
+      },
+    });
+  } catch (error) {
+    return Response.json(
+      {
+        error: "GET method failed",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
+  }
 }
 
 // Explicitly handle other methods to prevent 405
@@ -122,52 +153,63 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Get image metadata
-    const metadata = await sharp(buffer).metadata();
-    console.log(
-      "Original image dimensions:",
-      metadata.width,
-      "x",
-      metadata.height
-    );
+    // Check if Sharp is available and process image
+    let finalBuffer: Buffer;
+    let contentType: string;
 
-    // Process image with better quality
-    let processedBuffer = sharp(buffer, {
-      failOnError: false,
-      limitInputPixels: false,
-    });
+    if (!sharp) {
+      console.error("Sharp is not available, using original image");
+      finalBuffer = buffer;
+      contentType = file.type;
+    } else {
+      // Get image metadata
+      const metadata = await sharp(buffer).metadata();
+      console.log(
+        "Original image dimensions:",
+        metadata.width,
+        "x",
+        metadata.height
+      );
 
-    // If image is too large, resize while maintaining aspect ratio
-    const maxDimension = 2048;
-    if (
-      metadata.width &&
-      metadata.height &&
-      (metadata.width > maxDimension || metadata.height > maxDimension)
-    ) {
-      processedBuffer = processedBuffer.resize(maxDimension, maxDimension, {
-        fit: "inside",
-        withoutEnlargement: true,
-        kernel: sharp.kernel.lanczos3, // Better resizing algorithm
+      // Process image with better quality
+      let processedBuffer = sharp(buffer, {
+        failOnError: false,
+        limitInputPixels: false,
       });
-      console.log("Resized image to max dimension:", maxDimension);
+
+      // If image is too large, resize while maintaining aspect ratio
+      const maxDimension = 2048;
+      if (
+        metadata.width &&
+        metadata.height &&
+        (metadata.width > maxDimension || metadata.height > maxDimension)
+      ) {
+        processedBuffer = processedBuffer.resize(maxDimension, maxDimension, {
+          fit: "inside",
+          withoutEnlargement: true,
+          kernel: sharp.kernel.lanczos3, // Better resizing algorithm
+        });
+        console.log("Resized image to max dimension:", maxDimension);
+      }
+
+      // Convert to high-quality JPEG if not already
+      finalBuffer = await processedBuffer
+        .jpeg({
+          quality: 95,
+          progressive: true,
+          mozjpeg: true,
+          chromaSubsampling: "4:4:4", // Better color quality
+        })
+        .toBuffer();
+      contentType = "image/jpeg";
     }
 
-    // Convert to high-quality JPEG if not already
-    const finalBuffer = await processedBuffer
-      .jpeg({
-        quality: 95,
-        progressive: true,
-        mozjpeg: true,
-        chromaSubsampling: "4:4:4", // Better color quality
-      })
-      .toBuffer();
-
     // upload to Storage
-    console.log("Uploading processed image to storage:", objectKey);
+    console.log("Uploading image to storage:", objectKey);
     const { error: upErr } = await supabaseAdmin.storage
       .from("posts")
       .upload(objectKey, finalBuffer, {
-        contentType: "image/jpeg",
+        contentType,
         upsert: false,
       });
     if (upErr) {

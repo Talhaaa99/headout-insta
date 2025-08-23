@@ -1,15 +1,23 @@
 {
   "functions": {
     "app/api/upload/route.ts": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "runtime": "nodejs20.x"
     },
     "app/api/posts/route.ts": {
-      "maxDuration": 10
+      "maxDuration": 10,
+      "runtime": "nodejs20.x"
     },
     "app/api/likes/route.ts": {
-      "maxDuration": 10
+      "maxDuration": 10,
+      "runtime": "nodejs20.x"
     }
   },
   "regions": ["iad1"],
-  "crons": []
+  "crons": [],
+  "build": {
+    "env": {
+      "SHARP_IGNORE_GLOBAL_LIBVIPS": "1"
+    }
+  }
 }
