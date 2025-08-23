@@ -12,12 +12,12 @@ export async function GET(
     .eq("id", id)
     .single();
   if (error || !post) return new Response("Not found", { status: 404 });
-  
+
   // Check if image_path is a direct URL (like Unsplash)
-  if (post.image_path.startsWith('http')) {
+  if (post.image_path.startsWith("http")) {
     return Response.json({ url: post.image_path });
   }
-  
+
   // Otherwise, get signed URL from Supabase storage
   const { data, error: sigErr } = await supabaseAdmin.storage
     .from("posts")

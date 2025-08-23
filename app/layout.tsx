@@ -38,11 +38,7 @@ export default function RootLayout({
             </header>
           </SignedOut>
           {children}
-          <Toaster
-            position="top-center"
-            closeButton={false}
-            duration={3000}
-          />
+          <Toaster position="top-center" closeButton={false} duration={3000} />
         </body>
       </html>
     </ClerkProvider>
