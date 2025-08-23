@@ -2,11 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 import {
   ClerkProvider,
-  SignedIn,
   SignedOut,
   SignInButton,
   SignUpButton,
-  UserButton,
 } from "@clerk/nextjs";
 import { Toaster } from "sonner";
 

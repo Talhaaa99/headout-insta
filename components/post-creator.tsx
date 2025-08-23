@@ -216,7 +216,7 @@ export default function PostCreator({ isOpen, onClose }: PostCreatorProps) {
                     {!croppedFile && (
                       <div className="text-center p-4 bg-muted/20 rounded-lg">
                         <p className="text-sm text-muted-foreground mb-3">
-                          Crop your image to Instagram's 4:5 ratio
+                          Crop your image to Vistagram&apos;s 4:5 ratio
                         </p>
                         <Button
                           onClick={() => setShowCropper(true)}

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { motion } from "framer-motion";
 import { Camera, Edit3, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

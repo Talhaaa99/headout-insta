@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Add basic properties that the frontend expects
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const enhancedPosts = posts.map((post: any) => ({
       ...post,
       like_count: 0, // Default to 0, will be updated when likes system is working

@@ -49,7 +49,7 @@ export default function ImageCropper({
       );
       setCrop(crop);
     },
-    []
+    [ASPECT_RATIO]
   );
 
   const handleCrop = useCallback(() => {
