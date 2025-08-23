@@ -132,6 +132,7 @@ export default function ImageCropper({
               minWidth={100}
               minHeight={100}
             >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 ref={imgRef}
                 src={imageUrl}

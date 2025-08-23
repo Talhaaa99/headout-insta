@@ -133,7 +133,6 @@ export default function Feed() {
 }
 
 function LikeButton({ post }: { post: Post }) {
-  const { user } = useUser();
   const [liked, setLiked] = React.useState<boolean>(post.viewer_liked ?? false);
   const [count, setCount] = React.useState<number>(post.like_count ?? 0);
 

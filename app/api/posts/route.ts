@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get all like counts and user likes in batch
-    const postIds = posts.map((post: any) => post.id);
+    const postIds = posts.map((post: { id: string }) => post.id);
 
     // Get like counts for all posts
     const { data: likeCounts } = await supabaseAdmin
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
       .in("post_id", postIds);
 
     // Get current user's likes for all posts
-    let userLikes: any[] = [];
+    let userLikes: { post_id: string }[] = [];
     if (currentUserProfile) {
       const { data: likes } = await supabaseAdmin
         .from("likes")
@@ -84,12 +84,14 @@ export async function GET(req: NextRequest) {
 
     // Count likes per post
     const likeCountMap = new Map<string, number>();
-    likeCounts?.forEach((like: any) => {
+    likeCounts?.forEach((like: { post_id: string }) => {
       likeCountMap.set(like.post_id, (likeCountMap.get(like.post_id) || 0) + 1);
     });
 
     // Create set of posts user liked
-    const userLikedSet = new Set(userLikes.map((like: any) => like.post_id));
+    const userLikedSet = new Set(
+      userLikes.map((like: { post_id: string }) => like.post_id)
+    );
 
     // Add basic properties that the frontend expects
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
