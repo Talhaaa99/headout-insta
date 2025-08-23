@@ -5,6 +5,8 @@ import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { useState } from "react";
 import BottomNav from "@/components/bottom-nav";
 import PostCreator from "@/components/post-creator";
+import Header from "@/components/header";
+import ProfileSection from "@/components/profile-section";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"home" | "add" | "profile">(
@@ -19,23 +21,19 @@ export default function Home() {
   return (
     <div className="min-h-screen gradient-bg">
       <SignedIn>
+        {/* Header */}
+        <Header />
+
         {/* Main Content */}
-        <main className="mx-auto max-w-md pb-20">
+        <main className="mx-auto max-w-md pt-16 pb-24">
           {activeTab === "home" && (
             <div className="p-4">
               <Feed />
             </div>
           )}
           {activeTab === "profile" && (
-            <div className="p-4 text-center">
-              <div className="glass-effect rounded-2xl p-8">
-                <h2 className="text-2xl font-title text-foreground mb-4">
-                  Profile
-                </h2>
-                <p className="text-muted-foreground">
-                  Your profile content will appear here
-                </p>
-              </div>
+            <div className="p-4">
+              <ProfileSection />
             </div>
           )}
         </main>

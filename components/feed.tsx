@@ -1,10 +1,12 @@
 "use client";
 import useSWRInfinite from "swr/infinite";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import React from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { formatTimeAgo } from "@/lib/utils";
+import { useUser } from "@clerk/nextjs";
 
 interface Post {
   id: string;
@@ -16,6 +18,7 @@ interface Post {
   like_count?: number;
   profiles?: {
     username: string;
+    imageUrl?: string | null;
   };
   likes?: {
     count: number;
@@ -42,6 +45,32 @@ export default function Feed() {
   const { data, size, setSize, isValidating } = useSWRInfinite(getKey, fetcher);
   const items = data?.flatMap((d: ApiResponse) => d.items) ?? [];
   const hasMore = data && data[data.length - 1]?.nextCursor;
+  const loadingRef = useRef<HTMLDivElement>(null);
+
+  // Auto-load more when scrolling to the bottom
+  const loadMore = useCallback(() => {
+    if (hasMore && !isValidating) {
+      setSize(size + 1);
+    }
+  }, [hasMore, isValidating, setSize, size]);
+
+  // Intersection observer for auto-loading
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isValidating) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadingRef.current) {
+      observer.observe(loadingRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [loadMore, hasMore, isValidating]);
 
   return (
     <div className="space-y-4">
@@ -69,8 +98,10 @@ export default function Feed() {
             </motion.div>
           ))}
 
-          {isValidating && (
+          {/* Loading indicator - also serves as intersection observer target */}
+          {(isValidating || hasMore) && (
             <motion.div
+              ref={loadingRef}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="flex justify-center py-8"
@@ -78,24 +109,9 @@ export default function Feed() {
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 <span className="text-muted-foreground font-medium">
-                  Loading posts...
+                  {isValidating ? "Loading posts..." : "Loading more..."}
                 </span>
               </div>
-            </motion.div>
-          )}
-
-          {hasMore && !isValidating && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex justify-center py-4"
-            >
-              <button
-                onClick={() => setSize(size + 1)}
-                className="px-6 py-3 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-full font-medium transition-all duration-200 hover:from-primary/90 hover:to-primary/70 glow-hover"
-              >
-                Load more
-              </button>
             </motion.div>
           )}
 
@@ -181,57 +197,118 @@ function LikeButton({ post }: { post: Post }) {
 
 function FeedCard({ post }: { post: Post }) {
   const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const { user } = useUser();
+
   useEffect(() => {
     fetch(`/api/posts/${post.id}/image`)
       .then((r) => r.json())
       .then((d: { url: string }) => setImgUrl(d.url));
   }, [post.id]);
 
+  // Get user display info
+  const getUserDisplayInfo = () => {
+    // If this is the current user's post, show their Clerk data
+    if (user && post.user_id === user.id) {
+      return {
+        name: user.username || user.firstName || "You",
+        avatar: user.imageUrl,
+      };
+    }
+
+    // Otherwise show the stored profile data
+    if (post.profiles?.username && post.profiles.username !== "Unknown User") {
+      return {
+        name: post.profiles.username,
+        avatar: post.profiles.imageUrl || null,
+      };
+    }
+
+    return {
+      name: "Unknown User",
+      avatar: null,
+    };
+  };
+
+  const userInfo = getUserDisplayInfo();
+
   return (
     <div className="glass-effect rounded-2xl overflow-hidden glow-hover transition-all duration-300">
+      {/* User Profile Header */}
+      <div className="flex items-center justify-between p-4 border-b border-border/20">
+        <div className="flex items-center gap-3">
+          {userInfo.avatar ? (
+            <div className="w-8 h-8 rounded-full overflow-hidden">
+              <Image
+                src={userInfo.avatar}
+                alt={userInfo.name}
+                width={32}
+                height={32}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+              <span className="text-xs font-medium text-primary">
+                {userInfo.name.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              {userInfo.name}
+            </p>
+          </div>
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {formatTimeAgo(post.created_at)}
+        </span>
+      </div>
+
+      {/* Image */}
       {imgUrl && (
-        <div className="relative w-full aspect-[4/5] overflow-hidden">
+        <div className="relative w-full aspect-[4/5] overflow-hidden bg-muted/20">
           <Image
             src={imgUrl}
             alt={post.caption ?? "Post"}
             fill
-            sizes="(max-width:768px) 100vw, 600px"
             className="object-cover"
+            sizes="(max-width:768px) 100vw, 600px"
+            quality={95}
+            priority={true}
+            placeholder="blur"
+            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
           />
         </div>
       )}
-      <div className="p-6 space-y-4">
+
+      {/* Caption and Actions */}
+      <div className="p-4 space-y-4">
         {post.caption && (
           <p className="text-foreground font-text text-sm leading-relaxed">
             {post.caption}
           </p>
         )}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <LikeButton post={post} />
-            <button
-              onClick={() => sharePost(post.id)}
-              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+        <div className="flex items-center gap-4">
+          <LikeButton post={post} />
+          <button
+            onClick={() => sharePost(post.id)}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
-                />
-              </svg>
-              Share
-            </button>
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {new Date(post.created_at).toLocaleDateString()}
-          </span>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
+              />
+            </svg>
+            Share
+          </button>
         </div>
       </div>
     </div>

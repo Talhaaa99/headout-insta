@@ -5,8 +5,10 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, X, Check, Loader2 } from "lucide-react";
+import { Camera, X, Check, Loader2, Crop } from "lucide-react";
 import Image from "next/image";
+import ImageCropper from "./image-cropper";
+import { useUser } from "@clerk/nextjs";
 
 interface FormValues {
   caption: string;
@@ -18,8 +20,11 @@ interface PostCreatorProps {
 }
 
 export default function PostCreator({ isOpen, onClose }: PostCreatorProps) {
+  const { user } = useUser();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [croppedFile, setCroppedFile] = useState<Blob | null>(null);
+  const [showCropper, setShowCropper] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { register, handleSubmit, reset } = useForm<FormValues>();
@@ -47,11 +52,23 @@ export default function PostCreator({ isOpen, onClose }: PostCreatorProps) {
   };
 
   const handleSubmitPost = async (values: FormValues) => {
-    if (!selectedFile) return;
+    if (!croppedFile) return;
 
     const fd = new FormData();
-    fd.append("file", selectedFile);
+    fd.append("file", croppedFile);
     fd.append("caption", values.caption || "");
+
+    // Add user data from Clerk
+    if (user) {
+      fd.append(
+        "userData",
+        JSON.stringify({
+          username: user.username || user.firstName || "",
+          displayName: user.username || user.firstName || "",
+          profilePictureUrl: user.imageUrl || "",
+        })
+      );
+    }
 
     setSubmitting(true);
     const res = await fetch("/api/upload", { method: "POST", body: fd });
@@ -66,18 +83,33 @@ export default function PostCreator({ isOpen, onClose }: PostCreatorProps) {
     reset();
     setSelectedFile(null);
     setPreviewUrl(null);
+    setCroppedFile(null);
     onClose();
   };
 
   const handleClose = () => {
     setSelectedFile(null);
     setPreviewUrl(null);
+    setCroppedFile(null);
+    setShowCropper(false);
     reset();
     onClose();
   };
 
+  const handleCrop = (croppedImage: Blob) => {
+    setCroppedFile(croppedImage);
+    setShowCropper(false);
+    // Create preview URL for cropped image with better quality
+    const url = URL.createObjectURL(croppedImage);
+    setPreviewUrl(url);
+  };
+
+  const handleCropCancel = () => {
+    setShowCropper(false);
+  };
+
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {isOpen && (
         <motion.div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
@@ -163,12 +195,15 @@ export default function PostCreator({ isOpen, onClose }: PostCreatorProps) {
               ) : (
                 /* Preview and Caption */
                 <div className="space-y-4">
-                  <div className="relative aspect-square rounded-xl overflow-hidden">
+                  <div className="relative rounded-xl overflow-hidden bg-muted/20">
                     <Image
                       src={previewUrl!}
                       alt="Preview"
-                      fill
-                      className="object-cover"
+                      width={400}
+                      height={500}
+                      className="w-full h-auto object-cover"
+                      priority={true}
+                      quality={95}
                     />
                   </div>
                   <textarea
@@ -177,28 +212,55 @@ export default function PostCreator({ isOpen, onClose }: PostCreatorProps) {
                     rows={3}
                     {...register("caption")}
                   />
-                  <Button
-                    onClick={handleSubmit(handleSubmitPost)}
-                    disabled={submitting}
-                    className="w-full font-medium bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-200"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Posting...
-                      </>
-                    ) : (
-                      <>
-                        <Check className="mr-2 h-4 w-4" />
-                        Post
-                      </>
+                  <div className="space-y-3">
+                    {!croppedFile && (
+                      <div className="text-center p-4 bg-muted/20 rounded-lg">
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Crop your image to Instagram's 4:5 ratio
+                        </p>
+                        <Button
+                          onClick={() => setShowCropper(true)}
+                          className="w-full font-medium bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-200"
+                        >
+                          <Crop className="mr-2 h-4 w-4" />
+                          Crop Image
+                        </Button>
+                      </div>
                     )}
-                  </Button>
+                    {croppedFile && (
+                      <Button
+                        onClick={handleSubmit(handleSubmitPost)}
+                        disabled={submitting}
+                        className="w-full font-medium bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-200"
+                      >
+                        {submitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Posting...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="mr-2 h-4 w-4" />
+                            Post
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           </motion.div>
         </motion.div>
+      )}
+
+      {/* Image Cropper Modal */}
+      {showCropper && previewUrl && (
+        <ImageCropper
+          imageUrl={previewUrl}
+          onCrop={handleCrop}
+          onCancel={handleCropCancel}
+        />
       )}
     </AnimatePresence>
   );

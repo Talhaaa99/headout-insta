@@ -9,6 +9,8 @@ CREATE TABLE profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   clerk_user_id TEXT UNIQUE NOT NULL,
   username TEXT,
+  display_name TEXT,
+  profile_picture_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```

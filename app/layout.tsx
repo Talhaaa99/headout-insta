@@ -13,6 +13,9 @@ import { Toaster } from "sonner";
 export const metadata: Metadata = {
   title: "Vistagram",
   description: "Share your photos and see what others are posting",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -36,14 +39,9 @@ export default function RootLayout({
           </SignedOut>
           {children}
           <Toaster
-            position="bottom-center"
-            toastOptions={{
-              style: {
-                background: "hsl(var(--card))",
-                color: "hsl(var(--card-foreground))",
-                border: "1px solid hsl(var(--border))",
-              },
-            }}
+            position="top-center"
+            closeButton={false}
+            duration={3000}
           />
         </body>
       </html>

@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&family=Manrope:wght@200..800&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -183,4 +184,52 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Custom font classes */
+.font-cursive {
+  font-family: "Dancing Script", cursive;
+}
+
+/* Minimalistic Toast Styles */
+[data-sonner-toaster] {
+  --normal-bg: hsl(var(--background));
+  --normal-border: hsl(var(--border));
+  --normal-text: hsl(var(--foreground));
+  --success-bg: hsl(var(--success) / 0.1);
+  --success-border: hsl(var(--success) / 0.2);
+  --success-text: hsl(var(--success));
+  --error-bg: hsl(var(--destructive) / 0.1);
+  --error-border: hsl(var(--destructive) / 0.2);
+  --error-text: hsl(var(--destructive));
+}
+
+[data-sonner-toast] {
+  border-radius: 9999px !important;
+  padding: 8px 16px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  backdrop-filter: blur(8px) !important;
+  max-width: 300px !important;
+  text-align: center !important;
+  border: 1px solid !important;
+}
+
+[data-sonner-toast][data-type="success"] {
+  background: var(--success-bg) !important;
+  border-color: var(--success-border) !important;
+  color: var(--success-text) !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background: var(--error-bg) !important;
+  border-color: var(--error-border) !important;
+  color: var(--error-text) !important;
+}
+
+[data-sonner-toast][data-type="default"] {
+  background: var(--normal-bg) !important;
+  border-color: var(--normal-border) !important;
+  color: var(--normal-text) !important;
 }

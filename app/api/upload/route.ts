@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { ratelimit } from "../_lib/rate-limit";
+import sharp from "sharp";
 
 export const runtime = "nodejs"; // (or "edge" without FormData file stream)
 
@@ -19,13 +20,15 @@ export async function POST(req: NextRequest) {
     const file = form.get("file") as File | null;
     const caption = (form.get("caption") as string) || "";
     const location = (form.get("location") as string) || ""; // JSON string
+    const userDataStr = (form.get("userData") as string) || "";
+    const userData = userDataStr ? JSON.parse(userDataStr) : null;
 
     if (!file) return new Response("No file", { status: 400 });
 
     // get or create profile id
     let { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("id")
+      .select("id, username, display_name, profile_picture_url")
       .eq("clerk_user_id", userId)
       .maybeSingle();
 
@@ -34,8 +37,16 @@ export async function POST(req: NextRequest) {
       console.log("Creating new profile for user:", userId);
       const { data: newProfile, error: profileError } = await supabaseAdmin
         .from("profiles")
-        .insert({ clerk_user_id: userId })
-        .select("id")
+        .insert({
+          clerk_user_id: userId,
+          username: userData?.username || `user_${userId.slice(-6)}`,
+          display_name:
+            userData?.displayName ||
+            userData?.username ||
+            `user_${userId.slice(-6)}`,
+          profile_picture_url: userData?.profilePictureUrl || null,
+        })
+        .select("id, username, display_name, profile_picture_url")
         .single();
 
       if (profileError) {
@@ -50,18 +61,87 @@ export async function POST(req: NextRequest) {
       }
       profile = newProfile;
       console.log("Profile created:", profile.id);
+    } else if (
+      userData &&
+      (profile.username !== userData.username ||
+        profile.profile_picture_url !== userData.profilePictureUrl)
+    ) {
+      // Update existing profile with new user data
+      console.log("Updating profile with new user data");
+      const { data: updatedProfile, error: updateError } = await supabaseAdmin
+        .from("profiles")
+        .update({
+          username: userData.username || profile.username,
+          display_name:
+            userData.displayName || userData.username || profile.display_name,
+          profile_picture_url:
+            userData.profilePictureUrl || profile.profile_picture_url,
+        })
+        .eq("id", profile.id)
+        .select("id, username, display_name, profile_picture_url")
+        .single();
+
+      if (updateError) {
+        console.error("Profile update error:", updateError);
+      } else {
+        profile = updatedProfile;
+        console.log("Profile updated:", profile.id);
+      }
     }
 
-    const ext = file.name.split(".").pop() || "jpg";
-    const objectKey = `user_${profile.id}/${crypto.randomUUID()}.${ext}`;
+    const objectKey = `user_${profile.id}/${crypto.randomUUID()}.jpg`;
+
+    // Process image for better quality and dimensions
+    console.log("Processing image for upload");
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Get image metadata
+    const metadata = await sharp(buffer).metadata();
+    console.log(
+      "Original image dimensions:",
+      metadata.width,
+      "x",
+      metadata.height
+    );
+
+    // Process image with better quality
+    let processedBuffer = sharp(buffer, {
+      failOnError: false,
+      limitInputPixels: false,
+    });
+
+    // If image is too large, resize while maintaining aspect ratio
+    const maxDimension = 2048;
+    if (
+      metadata.width &&
+      metadata.height &&
+      (metadata.width > maxDimension || metadata.height > maxDimension)
+    ) {
+      processedBuffer = processedBuffer.resize(maxDimension, maxDimension, {
+        fit: "inside",
+        withoutEnlargement: true,
+        kernel: sharp.kernel.lanczos3, // Better resizing algorithm
+      });
+      console.log("Resized image to max dimension:", maxDimension);
+    }
+
+    // Convert to high-quality JPEG if not already
+    const finalBuffer = await processedBuffer
+      .jpeg({
+        quality: 95,
+        progressive: true,
+        mozjpeg: true,
+        chromaSubsampling: "4:4:4", // Better color quality
+      })
+      .toBuffer();
 
     // upload to Storage
-    console.log("Uploading to storage:", objectKey);
-    const arrayBuffer = await file.arrayBuffer();
+    console.log("Uploading processed image to storage:", objectKey);
     const { error: upErr } = await supabaseAdmin.storage
       .from("posts")
-      .upload(objectKey, Buffer.from(arrayBuffer), {
-        contentType: file.type || "image/jpeg",
+      .upload(objectKey, finalBuffer, {
+        contentType: "image/jpeg",
         upsert: false,
       });
     if (upErr) {

@@ -12,10 +12,24 @@ export async function GET(req: NextRequest) {
   const limit = Number(req.nextUrl.searchParams.get("limit") ?? 10);
 
   try {
-    // Simple query that should work even with minimal schema
+    // Query posts with profile information
     let query = supabaseAdmin
       .from("posts")
-      .select("id, caption, image_path, created_at, user_id")
+      .select(
+        `
+          id, 
+          caption, 
+          image_path, 
+          created_at, 
+          user_id,
+          profiles!posts_user_id_fkey(
+            clerk_user_id,
+            username,
+            display_name,
+            profile_picture_url
+          )
+        `
+      )
       .order("created_at", { ascending: false })
       .limit(limit + 1);
 
@@ -34,11 +48,17 @@ export async function GET(req: NextRequest) {
     }
 
     // Add basic properties that the frontend expects
-    const enhancedPosts = posts.map((post) => ({
+    const enhancedPosts = posts.map((post: any) => ({
       ...post,
       like_count: 0, // Default to 0, will be updated when likes system is working
       viewer_liked: false,
-      profiles: { username: "user" }, // Default username
+      profiles: {
+        username:
+          post.profiles?.display_name ||
+          post.profiles?.username ||
+          "Unknown User",
+        imageUrl: post.profiles?.profile_picture_url || null,
+      },
     }));
 
     const hasMore = enhancedPosts.length > limit;
