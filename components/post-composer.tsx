@@ -73,8 +73,8 @@ export default function PostComposer() {
         />
       </div>
 
-            <Button 
-        disabled={submitting || !file?.length} 
+      <Button
+        disabled={submitting || !file?.length}
         type="submit"
         className="w-full font-medium bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-200 glow-hover"
       >
