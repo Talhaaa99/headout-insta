@@ -133,6 +133,7 @@ export default function Feed() {
 }
 
 function LikeButton({ post }: { post: Post }) {
+  const { user } = useUser();
   const [liked, setLiked] = React.useState<boolean>(post.viewer_liked ?? false);
   const [count, setCount] = React.useState<number>(post.like_count ?? 0);
 
@@ -154,6 +155,17 @@ function LikeButton({ post }: { post: Post }) {
     } else {
       toast.success(liked ? "Unliked" : "Liked!");
     }
+  };
+
+  // Generate like preview text
+  const getLikePreview = () => {
+    if (count === 0) return "";
+    if (count === 1 && liked) return "You";
+    if (count === 1) return "1 person";
+    if (liked) {
+      return count === 2 ? "You + 1" : `You + ${count - 1}`;
+    }
+    return `${count} people`;
   };
 
   return (
@@ -190,7 +202,7 @@ function LikeButton({ post }: { post: Post }) {
           </svg>
         )}
       </motion.div>
-      <span className="text-sm font-medium">{count}</span>
+      <span className="text-sm font-medium">{getLikePreview()}</span>
     </motion.button>
   );
 }

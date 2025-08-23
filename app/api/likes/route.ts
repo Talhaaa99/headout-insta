@@ -3,6 +3,9 @@ import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { ratelimit } from "../_lib/rate-limit";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
   const ip = req.headers.get("x-forwarded-for") ?? "global";
   const { success } = await ratelimit.limit(ip);

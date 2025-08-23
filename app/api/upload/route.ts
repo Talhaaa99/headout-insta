@@ -5,7 +5,8 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { ratelimit } from "../_lib/rate-limit";
 import sharp from "sharp";
 
-export const runtime = "nodejs"; // (or "edge" without FormData file stream)
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {

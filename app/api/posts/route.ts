@@ -2,6 +2,7 @@
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextRequest } from "next/server";
 import { ratelimit } from "../_lib/rate-limit";
+import { auth } from "@clerk/nextjs/server";
 
 export async function GET(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") ?? "global";
@@ -10,6 +11,9 @@ export async function GET(req: NextRequest) {
 
   const cursor = req.nextUrl.searchParams.get("cursor"); // created_at iso
   const limit = Number(req.nextUrl.searchParams.get("limit") ?? 10);
+
+  // Get current user for like status
+  const { userId } = await auth();
 
   try {
     // Query posts with profile information
@@ -47,12 +51,52 @@ export async function GET(req: NextRequest) {
       return Response.json({ items: [], nextCursor: null });
     }
 
+    // Get current user's profile for like status
+    let currentUserProfile = null;
+    if (userId) {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .eq("clerk_user_id", userId)
+        .maybeSingle();
+      currentUserProfile = profile;
+    }
+
+    // Get all like counts and user likes in batch
+    const postIds = posts.map((post: any) => post.id);
+
+    // Get like counts for all posts
+    const { data: likeCounts } = await supabaseAdmin
+      .from("likes")
+      .select("post_id")
+      .in("post_id", postIds);
+
+    // Get current user's likes for all posts
+    let userLikes: any[] = [];
+    if (currentUserProfile) {
+      const { data: likes } = await supabaseAdmin
+        .from("likes")
+        .select("post_id")
+        .in("post_id", postIds)
+        .eq("user_id", currentUserProfile.id);
+      userLikes = likes || [];
+    }
+
+    // Count likes per post
+    const likeCountMap = new Map<string, number>();
+    likeCounts?.forEach((like: any) => {
+      likeCountMap.set(like.post_id, (likeCountMap.get(like.post_id) || 0) + 1);
+    });
+
+    // Create set of posts user liked
+    const userLikedSet = new Set(userLikes.map((like: any) => like.post_id));
+
     // Add basic properties that the frontend expects
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const enhancedPosts = posts.map((post: any) => ({
       ...post,
-      like_count: 0, // Default to 0, will be updated when likes system is working
-      viewer_liked: false,
+      like_count: likeCountMap.get(post.id) || 0,
+      viewer_liked: userLikedSet.has(post.id),
       profiles: {
         username:
           post.profiles?.display_name ||
