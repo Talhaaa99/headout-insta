@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, X, Check, Loader2, Crop } from "lucide-react";
+import { Camera, X, Check, Loader2 } from "lucide-react";
 import Image from "next/image";
 import ImageCropper from "./image-cropper";
 import { useUser } from "@clerk/nextjs";
@@ -29,15 +29,8 @@ export default function PostCreator({ isOpen, onClose }: PostCreatorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { register, handleSubmit, reset } = useForm<FormValues>();
 
-  const openCamera = () => {
+  const openPhotoSelector = () => {
     if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const openFileSelector = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.removeAttribute("capture");
       fileInputRef.current.click();
     }
   };
@@ -48,6 +41,8 @@ export default function PostCreator({ isOpen, onClose }: PostCreatorProps) {
       setSelectedFile(file);
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
+      // Go directly to cropping
+      setShowCropper(true);
     }
   };
 
@@ -102,6 +97,10 @@ export default function PostCreator({ isOpen, onClose }: PostCreatorProps) {
     // Create preview URL for cropped image with better quality
     const url = URL.createObjectURL(croppedImage);
     setPreviewUrl(url);
+    // Set selectedFile to trigger caption view
+    setSelectedFile(
+      new File([croppedImage], "cropped-image.jpg", { type: "image/jpeg" })
+    );
   };
 
   const handleCropCancel = () => {
@@ -139,55 +138,26 @@ export default function PostCreator({ isOpen, onClose }: PostCreatorProps) {
             {/* Content */}
             <div className="p-4 space-y-4">
               {!selectedFile ? (
-                /* Camera/File Selector */
+                /* Photo Selector */
                 <div className="text-center py-12 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      onClick={openCamera}
-                      className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-border rounded-xl hover:border-primary/50 transition-colors"
-                    >
-                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Camera className="h-6 w-6 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-title text-sm">Camera</p>
-                        <p className="text-muted-foreground text-xs">
-                          Take photo
-                        </p>
-                      </div>
-                    </button>
-                    <button
-                      onClick={openFileSelector}
-                      className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-border rounded-xl hover:border-primary/50 transition-colors"
-                    >
-                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                        <svg
-                          className="h-6 w-6 text-primary"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="font-title text-sm">Gallery</p>
-                        <p className="text-muted-foreground text-xs">
-                          Choose photo
-                        </p>
-                      </div>
-                    </button>
-                  </div>
+                  <button
+                    onClick={openPhotoSelector}
+                    className="flex flex-col items-center gap-3 p-8 border-2 border-dashed border-border rounded-xl hover:border-primary/50 transition-colors w-full"
+                  >
+                    <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Camera className="h-8 w-8 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-title text-lg">Add Photo</p>
+                      <p className="text-muted-foreground text-sm">
+                        Choose from gallery or take a photo
+                      </p>
+                    </div>
+                  </button>
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
@@ -213,39 +183,23 @@ export default function PostCreator({ isOpen, onClose }: PostCreatorProps) {
                     {...register("caption")}
                   />
                   <div className="space-y-3">
-                    {!croppedFile && (
-                      <div className="text-center p-4 bg-muted/20 rounded-lg">
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Crop your image to Vistagram&apos;s 4:5 ratio
-                        </p>
-                        <Button
-                          onClick={() => setShowCropper(true)}
-                          className="w-full font-medium bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-200"
-                        >
-                          <Crop className="mr-2 h-4 w-4" />
-                          Crop Image
-                        </Button>
-                      </div>
-                    )}
-                    {croppedFile && (
-                      <Button
-                        onClick={handleSubmit(handleSubmitPost)}
-                        disabled={submitting}
-                        className="w-full font-medium bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-200"
-                      >
-                        {submitting ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Posting...
-                          </>
-                        ) : (
-                          <>
-                            <Check className="mr-2 h-4 w-4" />
-                            Post
-                          </>
-                        )}
-                      </Button>
-                    )}
+                    <Button
+                      onClick={handleSubmit(handleSubmitPost)}
+                      disabled={submitting}
+                      className="w-full font-medium bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-200"
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Posting...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="mr-2 h-4 w-4" />
+                          Post
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
               )}

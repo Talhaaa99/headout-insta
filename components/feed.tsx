@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { formatTimeAgo } from "@/lib/utils";
 import { useUser } from "@clerk/nextjs";
+import { Loader2 } from "lucide-react";
 
 interface Post {
   id: string;
@@ -74,7 +75,17 @@ export default function Feed() {
 
   return (
     <div className="space-y-4">
-      {items.length === 0 && !isValidating ? (
+      {/* Initial Loading State */}
+      {items.length === 0 && isValidating && (
+        <div className="space-y-4">
+          {[...Array(3)].map((_, index) => (
+            <PostSkeleton key={index} />
+          ))}
+        </div>
+      )}
+
+      {/* No Posts State */}
+      {items.length === 0 && !isValidating && (
         <div className="text-center py-12">
           <div className="glass-effect rounded-2xl p-8">
             <h3 className="text-xl font-title text-foreground mb-2">
@@ -85,14 +96,17 @@ export default function Feed() {
             </p>
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* Posts */}
+      {items.length > 0 && (
         <>
           {items.map((p: Post, index: number) => (
             <motion.div
               key={p.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.05 }}
+              transition={{ duration: 0.4, delay: index * 0.1 }}
             >
               <FeedCard post={p} />
             </motion.div>
@@ -208,12 +222,24 @@ function LikeButton({ post }: { post: Post }) {
 
 function FeedCard({ post }: { post: Post }) {
   const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
   const { user } = useUser();
 
   useEffect(() => {
+    setImageLoading(true);
+    setImageError(false);
+    
     fetch(`/api/posts/${post.id}/image`)
       .then((r) => r.json())
-      .then((d: { url: string }) => setImgUrl(d.url));
+      .then((d: { url: string }) => {
+        setImgUrl(d.url);
+        setImageLoading(false);
+      })
+      .catch(() => {
+        setImageError(true);
+        setImageLoading(false);
+      });
   }, [post.id]);
 
   // Get user display info
@@ -276,8 +302,28 @@ function FeedCard({ post }: { post: Post }) {
       </div>
 
       {/* Image */}
-      {imgUrl && (
-        <div className="relative w-full aspect-[4/5] overflow-hidden bg-muted/20">
+      <div className="relative w-full aspect-[4/5] overflow-hidden bg-muted/20">
+        {imageLoading && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Loading image...</span>
+            </div>
+          </div>
+        )}
+        
+        {imageError && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-12 h-12 mx-auto mb-2 bg-muted/40 rounded-full flex items-center justify-center">
+                <span className="text-muted-foreground">📷</span>
+              </div>
+              <p className="text-sm text-muted-foreground">Failed to load image</p>
+            </div>
+          </div>
+        )}
+        
+        {imgUrl && !imageLoading && !imageError && (
           <Image
             src={imgUrl}
             alt={post.caption ?? "Post"}
@@ -288,9 +334,14 @@ function FeedCard({ post }: { post: Post }) {
             priority={true}
             placeholder="blur"
             blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+            onLoad={() => setImageLoading(false)}
+            onError={() => {
+              setImageError(true);
+              setImageLoading(false);
+            }}
           />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Caption and Actions */}
       <div className="p-4 space-y-4">
@@ -344,4 +395,40 @@ async function sharePost(postId: string) {
       toast.error("Failed to share post");
     }
   }
+}
+
+// Skeleton loader component
+function PostSkeleton() {
+  return (
+    <div className="glass-effect rounded-2xl overflow-hidden animate-pulse">
+      {/* Header Skeleton */}
+      <div className="flex items-center justify-between p-4 border-b border-border/20">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-muted/60"></div>
+          <div className="space-y-1">
+            <div className="h-3 w-20 bg-muted/60 rounded"></div>
+          </div>
+        </div>
+        <div className="h-3 w-16 bg-muted/60 rounded"></div>
+      </div>
+
+      {/* Image Skeleton */}
+      <div className="relative w-full aspect-[4/5] bg-muted/40">
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-full bg-muted/60 animate-pulse"></div>
+        </div>
+      </div>
+
+      {/* Content Skeleton */}
+      <div className="p-4 space-y-4">
+        <div className="space-y-2">
+          <div className="h-4 w-full bg-muted/60 rounded"></div>
+          <div className="h-4 w-3/4 bg-muted/60 rounded"></div>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="h-5 w-16 bg-muted/60 rounded"></div>
+        </div>
+      </div>
+    </div>
+  );
 }
