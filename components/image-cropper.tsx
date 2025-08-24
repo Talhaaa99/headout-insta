@@ -34,11 +34,33 @@ export default function ImageCropper({
   const onImageLoad = useCallback(
     (e: React.SyntheticEvent<HTMLImageElement>) => {
       const { width, height } = e.currentTarget;
+      
+      // Calculate the best crop size that fits the image
+      const imageAspect = width / height;
+      const targetAspect = ASPECT_RATIO;
+      
+      let cropWidth, cropHeight;
+      
+      if (imageAspect > targetAspect) {
+        // Image is wider than target aspect ratio
+        cropHeight = height;
+        cropWidth = height * targetAspect;
+      } else {
+        // Image is taller than target aspect ratio
+        cropWidth = width;
+        cropHeight = width / targetAspect;
+      }
+      
+      // Ensure crop doesn't exceed image bounds
+      cropWidth = Math.min(cropWidth, width);
+      cropHeight = Math.min(cropHeight, height);
+      
       const crop = centerCrop(
         makeAspectCrop(
           {
-            unit: "%",
-            width: 90,
+            unit: "px",
+            width: cropWidth,
+            height: cropHeight,
           },
           ASPECT_RATIO,
           width,
@@ -123,7 +145,7 @@ export default function ImageCropper({
 
         {/* Cropper Area */}
         <div className="p-4">
-          <div className="relative mx-auto overflow-hidden bg-black rounded-lg">
+          <div className="relative mx-auto overflow-hidden bg-muted/20 rounded-lg" style={{ maxHeight: "60vh" }}>
             <ReactCrop
               crop={crop}
               onChange={(_, percentCrop) => setCrop(percentCrop)}
@@ -140,9 +162,10 @@ export default function ImageCropper({
                 onLoad={onImageLoad}
                 style={{
                   transform: `rotate(${rotation}deg)`,
-                  maxWidth: "100%",
-                  maxHeight: "400px",
+                  width: "100%",
+                  height: "auto",
                   display: "block",
+                  objectFit: "contain",
                 }}
               />
             </ReactCrop>

@@ -1,7 +1,14 @@
 "use client";
 import useSWRInfinite from "swr/infinite";
 import Image from "next/image";
-import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import React from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -42,11 +49,22 @@ const getKey = (pageIndex: number, prev: ApiResponse | null) =>
         prev?.nextCursor ? `&cursor=${encodeURIComponent(prev.nextCursor)}` : ""
       }`;
 
-export default function Feed() {
-  const { data, size, setSize, isValidating } = useSWRInfinite(getKey, fetcher);
+const Feed = forwardRef<{ refresh: () => void }>((props, ref) => {
+  const { data, size, setSize, isValidating, mutate } = useSWRInfinite(
+    getKey,
+    fetcher
+  );
   const items = data?.flatMap((d: ApiResponse) => d.items) ?? [];
   const hasMore = data && data[data.length - 1]?.nextCursor;
   const loadingRef = useRef<HTMLDivElement>(null);
+
+  // Expose refresh function to parent component
+  useImperativeHandle(ref, () => ({
+    refresh: () => {
+      // Force a complete refresh by clearing cache and refetching
+      mutate(undefined, { revalidate: true });
+    },
+  }));
 
   // Auto-load more when scrolling to the bottom
   const loadMore = useCallback(() => {
@@ -144,7 +162,7 @@ export default function Feed() {
       )}
     </div>
   );
-}
+});
 
 function LikeButton({ post }: { post: Post }) {
   const [liked, setLiked] = React.useState<boolean>(post.viewer_liked ?? false);
@@ -337,7 +355,7 @@ function FeedCard({ post }: { post: Post }) {
             quality={95}
             priority={true}
             placeholder="blur"
-            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxAAPwCdABmX/9k="
             onLoad={() => setImageLoading(false)}
             onError={() => {
               setImageError(true);
@@ -436,3 +454,7 @@ function PostSkeleton() {
     </div>
   );
 }
+
+Feed.displayName = "Feed";
+
+export default Feed;

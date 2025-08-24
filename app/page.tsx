@@ -2,7 +2,7 @@
 
 import Feed from "@/components/feed";
 import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Home as HomeIcon, Plus, User } from "lucide-react";
 import BottomNav from "@/components/bottom-nav";
 import PostCreator from "@/components/post-creator";
@@ -14,9 +14,16 @@ export default function Home() {
     "home"
   );
   const [isPostCreatorOpen, setIsPostCreatorOpen] = useState(false);
+  const feedRefreshRef = useRef<{ refresh: () => void } | null>(null);
 
   const handleAddClick = () => {
     setIsPostCreatorOpen(true);
+  };
+
+  const handlePostCreated = () => {
+    if (feedRefreshRef.current) {
+      feedRefreshRef.current.refresh();
+    }
   };
 
   return (
@@ -90,7 +97,7 @@ export default function Home() {
                   <div className="lg:grid lg:grid-cols-3 lg:gap-8 xl:gap-12">
                     {/* Main Feed */}
                     <div className="lg:col-span-2">
-                      <Feed />
+                      <Feed ref={feedRefreshRef} />
                     </div>
 
                     {/* Desktop Suggestions Panel */}
@@ -141,6 +148,7 @@ export default function Home() {
         <PostCreator
           isOpen={isPostCreatorOpen}
           onClose={() => setIsPostCreatorOpen(false)}
+          onPostCreated={handlePostCreated}
         />
       </SignedIn>
 

@@ -17,9 +17,14 @@ interface FormValues {
 interface PostCreatorProps {
   isOpen: boolean;
   onClose: () => void;
+  onPostCreated?: () => void;
 }
 
-export default function PostCreator({ isOpen, onClose }: PostCreatorProps) {
+export default function PostCreator({
+  isOpen,
+  onClose,
+  onPostCreated,
+}: PostCreatorProps) {
   const { user } = useUser();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -74,12 +79,26 @@ export default function PostCreator({ isOpen, onClose }: PostCreatorProps) {
       return;
     }
 
-    toast.success("Posted successfully!");
+    toast.success("Posted successfully! Refreshing feed...");
     reset();
     setSelectedFile(null);
     setPreviewUrl(null);
     setCroppedFile(null);
     onClose();
+
+    // Trigger immediate refresh attempt
+    if (onPostCreated) {
+      // Immediate refresh attempt
+      setTimeout(() => {
+        onPostCreated();
+      }, 1000);
+
+      // Backup refresh after 7 seconds to ensure backend processing is complete
+      setTimeout(() => {
+        onPostCreated();
+        toast.success("Feed updated with your new post!");
+      }, 7000);
+    }
   };
 
   const handleClose = () => {
